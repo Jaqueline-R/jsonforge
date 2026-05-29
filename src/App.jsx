@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react'
+import Contact from './pages/Contact'
+import Privacy from './pages/Privacy'
+import Terms from './pages/Terms'
 
 import {
   BrowserRouter,
   Routes,
   Route,
-  Link
+  Link,
+  useLocation
 } from 'react-router-dom'
 
 import { motion } from 'framer-motion'
@@ -22,14 +26,79 @@ import {
   Trash2,
   Download,
   Upload,
-  Code2
+  Code2,
+  Mail,
+  FileText
 } from 'lucide-react'
+
+const SEO_DATA = {
+  '/': {
+    title: 'JsonForge – Free JSON Validator, JWT Decoder & SQL Formatter',
+    description: 'Free online developer tools. Validate JSON, decode JWT tokens, format SQL queries and convert SQL to MongoDB. Fast, free and works in your browser.',
+  },
+  '/json-validator': {
+    title: 'JSON Validator & Beautifier Online – JsonForge',
+    description: 'Validate, beautify, minify and convert JSON online for free. Generate TypeScript interfaces and C# classes from JSON instantly.',
+  },
+  '/jwt-decoder': {
+    title: 'JWT Decoder Online – Decode JWT Tokens Free | JsonForge',
+    description: 'Decode JWT tokens online for free. Instantly view JWT header and payload without any server. 100% client-side and secure.',
+  },
+  '/sql-formatter': {
+    title: 'SQL Formatter & Beautifier Online – JsonForge',
+    description: 'Format and beautify SQL queries online for free. Clean up messy SQL with proper indentation and capitalization instantly.',
+  },
+  '/sql-to-mongo': {
+    title: 'SQL to MongoDB Query Converter Online – JsonForge',
+    description: 'Convert SQL queries to MongoDB queries online for free. Supports SELECT, WHERE, comparison operators and more.',
+  },
+}
+
+function SEOHead() {
+
+  const location = useLocation()
+
+  const seo = SEO_DATA[location.pathname] || SEO_DATA['/']
+
+  useEffect(() => {
+
+    document.title = seo.title
+
+    document.querySelector('meta[name="description"]')
+      ?.setAttribute('content', seo.description)
+
+    document.querySelector('meta[property="og:title"]')
+      ?.setAttribute('content', seo.title)
+
+    document.querySelector('meta[property="og:description"]')
+      ?.setAttribute('content', seo.description)
+
+    document.querySelector('meta[property="og:url"]')
+      ?.setAttribute('content', `https://usejsonforge.com${location.pathname}`)
+
+    document.querySelector('meta[name="twitter:title"]')
+      ?.setAttribute('content', seo.title)
+
+    document.querySelector('meta[name="twitter:description"]')
+      ?.setAttribute('content', seo.description)
+
+    const canonicalEl = document.getElementById('canonical-url')
+    if (canonicalEl) {
+      canonicalEl.setAttribute('href', `https://usejsonforge.com${location.pathname}`)
+    }
+
+  }, [location.pathname, seo])
+
+  return null
+}
 
 export default function App() {
 
   return (
 
     <BrowserRouter>
+
+      <SEOHead />
 
       <div className="min-h-screen bg-[#0d1117] text-white p-4 md:p-6">
 
@@ -72,37 +141,63 @@ export default function App() {
               text="SQL → Mongo"
               icon={<ArrowRightLeft size={20} />}
             />
-
           </div>
 
           <Routes>
 
-            <Route
-              path="/"
-              element={<JsonValidator />}
-            />
-
-            <Route
-              path="/json-validator"
-              element={<JsonValidator />}
-            />
-
-            <Route
-              path="/jwt-decoder"
-              element={<JwtDecoder />}
-            />
-
-            <Route
-              path="/sql-formatter"
-              element={<SqlFormatter />}
-            />
-
-            <Route
-              path="/sql-to-mongo"
-              element={<SqlToMongo />}
-            />
+            <Route path="/" element={<JsonValidator />} />
+            <Route path="/json-validator" element={<JsonValidator />} />
+            <Route path="/jwt-decoder" element={<JwtDecoder />} />
+            <Route path="/sql-formatter" element={<SqlFormatter />} />
+            <Route path="/sql-to-mongo" element={<SqlToMongo />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
 
           </Routes>
+
+          <footer className="mt-20 border-t border-gray-800 pt-8 pb-10">
+
+  <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+
+    <div>
+      <h3 className="text-xl font-bold text-cyan-400">
+        JsonForge
+      </h3>
+
+      <p className="text-gray-500 text-sm mt-1">
+        Free online developer tools
+      </p>
+    </div>
+
+    <div className="flex items-center gap-6 text-sm md:text-base">
+
+      <Link
+        to="/contact"
+        className="text-gray-400 hover:text-cyan-400 transition"
+      >
+        Contact
+      </Link>
+
+      <Link
+        to="/privacy"
+        className="text-gray-400 hover:text-cyan-400 transition"
+      >
+        Privacy Policy
+      </Link>
+
+      <Link
+        to="/terms"
+        className="text-gray-400 hover:text-cyan-400 transition"
+      >
+        Terms of Service
+      </Link>
+
+    </div>
+
+  </div>
+
+</footer>
 
         </div>
 
@@ -615,27 +710,521 @@ function SqlToMongo() {
   const [sql, setSql] = useState('')
   const [mongo, setMongo] = useState('')
 
-  const convertQuery = () => {
+const convertQuery = () => {
 
-    try {
+  /*
+==========================================
+DETECT STORED PROCEDURE
+==========================================
+*/
 
-      const tableMatch = sql.match(/FROM\s+(\w+)/i)
+let sqlToProcess = sql.trim()
 
-      const whereMatch = sql.match(
-        /WHERE\s+(\w+)\s*(=|>|<|>=|<=)\s*(\d+)/i
-      )
 
-      if (!tableMatch || !whereMatch) {
-        throw new Error('Unsupported query')
+if (/^CREATE\s+PROCEDURE/i.test(sqlToProcess)) {
+
+  /*
+  EXTRAER SELECT / INSERT / UPDATE / DELETE
+  */
+
+  const bodyMatch = sqlToProcess.match(
+    /BEGIN\s+([\s\S]*?)\s+END/i
+  )
+
+  if (bodyMatch) {
+
+    sqlToProcess = bodyMatch[1]
+     .replace(/SET\s+NOCOUNT\s+ON;?/gi, '')
+     .replace(/GO/gi, '')
+     .replace(/\r/g, '')
+     .trim()
+
+    sqlToProcess = sqlToProcess.trim()
+  }
+}
+
+  try {
+
+    /*
+    ==========================================
+    SELECT
+    ==========================================
+    */
+
+    if (/^SELECT/i.test(sqlToProcess)) {
+
+      const tableMatch = sqlToProcess.match(/FROM\s+(\w+)/i)
+
+      if (!tableMatch) {
+        throw new Error('Table not found')
       }
 
       const table = tableMatch[1]
-      const field = whereMatch[1]
-      const operator = whereMatch[2]
-      const value = whereMatch[3]
+
+      /*
+      ==========================================
+      DETECT JOIN
+      ==========================================
+      */
+
+      const hasJoin = /JOIN/i.test(sqlToProcess)
+
+      if (hasJoin) {
+
+        const joinMatch = sqlToProcess.match(
+        /JOIN\s+(\w+)(?:\s+\w+)?\s+ON\s+([\w\.]+)\s*=\s*([\w\.]+)/i
+        )
+
+        const whereMatch = sqlToProcess.match(
+         /WHERE\s+([\s\S]*?)(?:ORDER BY|GROUP BY|$)/i
+        )
+
+        const orderMatch = sqlToProcess.match(
+        /ORDER BY\s+(?:\w+\.)?(\w+)\s+(ASC|DESC)?/i
+       )
+
+        const groupMatch = sqlToProcess.match(/GROUP BY\s+(\w+)/i)
+
+        let pipeline = []
+
+        /*
+        ==========================================
+        LOOKUP
+        ==========================================
+        */
+
+        if (joinMatch) {
+
+          const foreignTable = joinMatch[1]
+
+          const leftField = joinMatch[2]
+            .split('.')
+            .pop()
+            .trim()
+
+          const rightField = joinMatch[3]
+            .split('.')
+            .pop()
+            .trim()
+
+          pipeline.push(`{
+  $lookup: {
+    from: "${foreignTable}",
+    localField: "${leftField}",
+    foreignField: "${rightField}",
+    as: "${foreignTable.toLowerCase()}"
+  }
+}`)
+        }
+
+        /*
+        ==========================================
+        WHERE
+        ==========================================
+        */
+
+        if (whereMatch) {
+
+          const whereClause = whereMatch[1]
+
+          const mongoConditions = parseConditions(whereClause)
+
+          pipeline.push(`{
+  $match: {
+    ${mongoConditions}
+  }
+}`)
+        }
+
+        /*
+        ==========================================
+        GROUP BY
+        ==========================================
+        */
+
+        if (groupMatch) {
+
+          const groupField = groupMatch[1]
+
+          pipeline.push(`{
+  $group: {
+    _id: "$${groupField}",
+    total: { $sum: 1 }
+  }
+}`)
+        }
+
+        /*
+        ==========================================
+        ORDER BY
+        ==========================================
+        */
+
+        if (orderMatch) {
+
+          const field = orderMatch[1]
+
+          const direction =
+            orderMatch[2]?.toUpperCase() === 'DESC'
+              ? -1
+              : 1
+
+          pipeline.push(`{
+  $sort: {
+    ${field}: ${direction}
+  }
+}`)
+        }
+
+        const result =
+`db.${table}.aggregate([
+${pipeline.join(',\n')}
+])`
+
+        setMongo(result)
+
+        return
+      }
+
+      /*
+      ==========================================
+      SIMPLE SELECT
+      ==========================================
+      */
+
+      let mongoQuery = `db.${table}.find(`
+
+      const whereMatch = sqlToProcess.match(
+       /WHERE\s+([\s\S]*?)(?:ORDER BY|GROUP BY|$)/i
+      )
+
+      const orderMatch = sqlToProcess.match(/ORDER BY\s+(\w+)\s+(ASC|DESC)?/i)
+
+      const limitMatch = sqlToProcess.match(/TOP\s+(\d+)/i)
+
+      if (whereMatch) {
+
+        const mongoConditions = parseConditions(whereMatch[1])
+
+        mongoQuery += `{\n  ${mongoConditions}\n}`
+
+      } else {
+
+        mongoQuery += '{}'
+      }
+
+      mongoQuery += ')'
+
+      /*
+      ==========================================
+      ORDER BY
+      ==========================================
+      */
+
+      if (orderMatch) {
+
+        const field = orderMatch[1]
+
+        const direction =
+          orderMatch[2]?.toUpperCase() === 'DESC'
+            ? -1
+            : 1
+
+        mongoQuery += `.sort({ ${field}: ${direction} })`
+      }
+
+      /*
+      ==========================================
+      LIMIT
+      ==========================================
+      */
+
+      if (limitMatch) {
+
+        mongoQuery += `.limit(${limitMatch[1]})`
+      }
+
+      setMongo(mongoQuery)
+
+      return
+    }
+
+    /*
+    ==========================================
+    INSERT
+    ==========================================
+    */
+
+    if (/^INSERT/i.test(sqlToProcess)) {
+
+      const insertMatch = sqlToProcess.match(
+        /INSERT\s+INTO\s+(\w+)\s*\((.+)\)\s*VALUES\s*\((.+)\)/i
+      )
+
+      if (!insertMatch) {
+        throw new Error('Invalid INSERT syntax')
+      }
+
+      const table = insertMatch[1]
+
+      const fields = insertMatch[2]
+        .split(',')
+        .map(f => f.trim())
+
+      const values = insertMatch[3]
+        .split(',')
+        .map(v => v.trim().replace(/'/g, ''))
+
+      const document = {}
+
+      fields.forEach((field, index) => {
+
+        const value = values[index]
+
+        document[field] =
+          isNaN(value)
+            ? value
+            : Number(value)
+      })
+
+      const result =
+`db.${table}.insertOne(
+${JSON.stringify(document, null, 2)}
+)`
+
+      setMongo(result)
+
+      return
+    }
+
+    /*
+    ==========================================
+    UPDATE
+    ==========================================
+    */
+
+    if (/^UPDATE/i.test(sqlToProcess)) {
+
+      const updateMatch = sqlToProcess.match(
+      /UPDATE\s+(\w+)\s+SET\s+([\s\S]+?)\s+WHERE\s+([\s\S]+)/i
+      )
+
+      if (!updateMatch) {
+        throw new Error('Invalid UPDATE syntax')
+      }
+
+      const table = updateMatch[1]
+
+      const setClause = updateMatch[2]
+
+      const whereClause = updateMatch[3]
+
+      const updates = {}
+
+      setClause
+      .split(',')
+      .filter(x => x.trim())
+      .forEach(item => {
+
+        const parts = item.split('=')
+
+        const field = parts[0]
+        const value = parts.slice(1).join('=')
+
+        updates[field.trim()] =
+          value.trim().replace(/'/g, '')
+      })
+
+      const mongoConditions = parseConditions(whereClause)
+
+      const result =
+`db.${table}.updateOne(
+  {
+    ${mongoConditions}
+  },
+  {
+    $set: ${JSON.stringify(updates, null, 4)}
+  }
+)`
+
+      setMongo(result)
+
+      return
+    }
+
+    /*
+    ==========================================
+    DELETE
+    ==========================================
+    */
+
+    if (/^DELETE/i.test(sqlToProcess)) {
+
+      const deleteMatch = sqlToProcess.match(
+        /DELETE\s+FROM\s+(\w+)\s+WHERE\s+(.+)/i
+      )
+
+      if (!deleteMatch) {
+        throw new Error('Invalid DELETE syntax')
+      }
+
+      const table = deleteMatch[1]
+
+      const mongoConditions = parseConditions(deleteMatch[2])
+
+      const result =
+`db.${table}.deleteOne({
+  ${mongoConditions}
+})`
+
+      setMongo(result)
+
+      return
+    }
+
+    throw new Error('Unsupported SQL syntax')
+
+  } catch (error) {
+
+    setMongo(error.message)
+  }
+}
+
+/*
+==========================================
+PARSE CONDITIONS
+==========================================
+*/
+
+function parseConditions(whereClause) {
+
+  if (!whereClause) return '{}'
+
+  whereClause = whereClause
+    .replace(/;/g, '')
+    .trim()
+
+  const andParts = []
+
+let tempClause = whereClause
+
+const betweenRegex = /(\w+\s+BETWEEN\s+\d+\s+AND\s+\d+)/gi
+
+const betweenMatches = tempClause.match(betweenRegex)
+
+if (betweenMatches) {
+
+  betweenMatches.forEach(match => {
+
+    andParts.push(match)
+
+    tempClause = tempClause.replace(match, '')
+  })
+}
+
+tempClause
+  .split(/\s+AND\s+/i)
+  .map(x => x.trim())
+  .filter(x => x)
+  .forEach(x => andParts.push(x))
+
+  const conditionMap = {}
+
+  andParts.forEach((part) => {
+
+    part = part.trim()
+
+    /*
+    ==========================================
+    BETWEEN
+    ==========================================
+    */
+
+    const betweenMatch = part.match(
+      /(?:\w+\.)?(\w+)\s+BETWEEN\s+(\d+)\s+AND\s+(\d+)/i
+    )
+
+    if (betweenMatch) {
+
+      const field = betweenMatch[1]
+
+      conditionMap[field] = {
+        ...(conditionMap[field] || {}),
+        $gte: Number(betweenMatch[2]),
+        $lte: Number(betweenMatch[3])
+      }
+
+      return
+    }
+
+    /*
+    ==========================================
+    LIKE
+    ==========================================
+    */
+
+    const likeMatch = part.match(
+      /(?:\w+\.)?(\w+)\s+LIKE\s+'%(.+)%'/i
+    )
+
+    if (likeMatch) {
+
+      const field = likeMatch[1]
+
+      conditionMap[field] = {
+        $regex: likeMatch[2],
+        $options: 'i'
+      }
+
+      return
+    }
+
+    /*
+    ==========================================
+    IN
+    ==========================================
+    */
+
+    const inMatch = part.match(
+      /(?:\w+\.)?(\w+)\s+IN\s+\((.+)\)/i
+    )
+
+    if (inMatch) {
+
+      const field = inMatch[1]
+
+      const values = inMatch[2]
+        .split(',')
+        .map(v => v.trim().replace(/'/g, ''))
+
+      conditionMap[field] = {
+        $in: values
+      }
+
+      return
+    }
+
+    /*
+    ==========================================
+    NORMAL OPERATORS
+    ==========================================
+    */
+
+    const normalMatch = part.match(
+      /(?:\w+\.)?(\w+)\s*(>=|<=|!=|=|>|<)\s*('?[^']+'?|\d+(\.\d+)?)/i
+    )
+
+    if (normalMatch) {
+
+      const field = normalMatch[1]
+
+      const operator = normalMatch[2]
+
+      let value = normalMatch[3]
 
       const operators = {
         '=': '$eq',
+        '!=': '$ne',
         '>': '$gt',
         '<': '$lt',
         '>=': '$gte',
@@ -644,18 +1233,29 @@ function SqlToMongo() {
 
       const mongoOperator = operators[operator]
 
-      const result = `db.${table}.find({
-  ${field}: { ${mongoOperator}: ${value} }
-})`
+      if (isNaN(value.replace(/'/g, ''))) {
 
-      setMongo(result)
+        value = value.replace(/'/g, '')
 
-    } catch (error) {
+      } else {
 
-      setMongo(error.message)
+        value = Number(value.replace(/'/g, ''))
+      }
+
+      conditionMap[field] = {
+        ...(conditionMap[field] || {}),
+        [mongoOperator]: value
+      }
     }
-  }
 
+  })
+
+  return Object.entries(conditionMap)
+    .map(([field, value]) =>
+`"${field}": ${JSON.stringify(value, null, 2)}`
+    )
+    .join(',\n')
+}
   const clearMongo = () => {
     setSql('')
     setMongo('')

@@ -32,6 +32,18 @@
   />
 
   <meta
+    name="robots"
+    content="index, follow"
+  />
+
+  <!-- Canonical: updated dynamically by SEOHead in App.jsx -->
+  <link
+    id="canonical-url"
+    rel="canonical"
+    href="https://usejsonforge.com/"
+  />
+
+  <meta
     property="og:title"
     content="JsonForge - Modern Developer Toolkit"
   />
@@ -48,12 +60,12 @@
 
   <meta
     property="og:url"
-    content="https://jsonforge.dev"
+    content="https://usejsonforge.com/"
   />
 
   <meta
     property="og:image"
-    content="https://jsonforge.dev/preview.png"
+    content="https://usejsonforge.com/preview.png"
   />
 
   <meta
@@ -70,6 +82,24 @@
     name="twitter:description"
     content="Free online developer tools for JSON, JWT, SQL and MongoDB."
   />
+
+  <!-- Structured data for Google -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "JsonForge",
+    "url": "https://usejsonforge.com",
+    "description": "Free online developer tools for JSON, JWT, SQL and MongoDB.",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Any",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    }
+  }
+  </script>
 
 </head>
 
